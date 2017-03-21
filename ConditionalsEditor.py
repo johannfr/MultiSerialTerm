@@ -20,22 +20,24 @@ class TreeTest(Tk):
         up_down_button_frame = Frame(main_frame)
 
         self.up_icon = PhotoImage(file="images/gtk-go-up.png")
-        up_button = Button(
+        self.up_button = Button(
             up_down_button_frame,
+            state="disabled",
             text="Move up",
             image=self.up_icon,
             command=self.up_pressed
         )
-        up_button.grid(column=0, row=0, sticky=(E))
+        self.up_button.grid(column=0, row=0, sticky=(E))
 
         self.down_icon = PhotoImage(file="images/gtk-go-down.png")
-        down_button = Button(
+        self.down_button = Button(
             up_down_button_frame,
+            state="disabled",
             text="Move down",
             image=self.down_icon,
             command=self.down_pressed
         )
-        down_button.grid(column=0, row=1, sticky=(E))
+        self.down_button.grid(column=0, row=1, sticky=(E))
 
 
         up_down_button_frame.grid(column=0, row=0, sticky=(E))
@@ -51,34 +53,60 @@ class TreeTest(Tk):
             columnspan=1
         )
         self.condition_list_scrollbar = Scrollbar(condition_list)
+
         self.state_listbox = Listbox(
             condition_list,
             relief=FLAT,
+            exportselection=False,
             borderwidth=0,
             highlightthickness=0,
-            yscrollcommand=self.other_scroll
+            yscrollcommand=self.state_listbox_scroll,
+            activestyle="none"
         )
-        self.state_listbox.grid(column=0, row=0, padx=0)
+        self.state_listbox.grid(column=0, row=0, padx=0, sticky=(N, S))
+        self.state_listbox.bind(
+            "<<ListboxSelect>>",
+            self.state_listbox_selected
+        )
+
         self.condition_listbox = Listbox(
             condition_list,
             relief=FLAT,
+            exportselection=False,
             borderwidth=0,
             highlightthickness=0,
-            yscrollcommand=self.other_scroll
+            yscrollcommand=self.condition_listbox_scroll,
+            activestyle="none"
         )
-        self.condition_listbox.grid(column=1, row=0, sticky=(E, W), padx=0)
+        self.condition_listbox.grid(column=1, row=0, sticky=(N, S, E, W), padx=0)
+        self.condition_listbox.bind(
+            "<<ListboxSelect>>",
+            self.condition_listbox_selected
+        )
+
         self.execution_target_listbox = Listbox(
             condition_list,
             relief=FLAT,
+            exportselection=False,
             borderwidth=0,
-            highlightthickness=0,yscrollcommand=self.other_scroll
+            highlightthickness=0,
+            yscrollcommand=self.execution_target_listbox_scroll,
+            activestyle="none"
         )
-        self.execution_target_listbox.grid(column=2, row=0, padx=0)
+        self.execution_target_listbox.grid(column=2, row=0, padx=0, sticky=(N, S))
+        self.execution_target_listbox.bind(
+            "<<ListboxSelect>>",
+            self.execution_target_listbox_selected
+        )
+
         self.condition_list_scrollbar.grid(column=3, row=0, sticky=(N, S))
-        self.condition_list_scrollbar["command"] = self.condition_list_scroll
+        self.condition_list_scrollbar.config(
+            command=self.condition_list_scrollbar_callback
+        )
+        condition_list.grid_rowconfigure(0, weight=1)
 
 
-        for i in range(30):
+        for i in range(5):
             self.state_listbox.insert(END, "Foo %d"%i)
             self.condition_listbox.insert(END, "Bar %d"%i)
             self.execution_target_listbox.insert(END, "Baz %d"%i)
@@ -184,20 +212,129 @@ class TreeTest(Tk):
         button_frame.grid_rowconfigure(0, weight=1)
 
     def up_pressed(self):
-        print "Up"
+        index = self.state_listbox.curselection()[0]
+        state_current = self.state_listbox.get(index)
+        condition_current = self.condition_listbox.get(index)
+        execution_target_current = self.condition_listbox.get(index)
+        self.state_listbox.delete(index)
+        self.condition_listbox.delete(index)
+        self.execution_target_listbox.delete(index)
+        self.state_listbox.insert(index-1, state_current)
+        self.condition_listbox.insert(index-1, condition_current)
+        self.execution_target_listbox.insert(index-1, execution_target_current)
+
+        self.state_listbox.selection_set(index-1)
+        self.condition_listbox.selection_set(index-1)
+        self.execution_target_listbox.selection_set(index-1)
+        self.state_listbox.see(index-1)
+
+        if index-1 == 0:
+            self.up_button.config(state="disabled")
+        self.down_button.config(state="normal")
 
     def down_pressed(self):
-        print "Down"
+        index = self.state_listbox.curselection()[0]
+        state_current = self.state_listbox.get(index)
+        condition_current = self.condition_listbox.get(index)
+        execution_target_current = self.execution_target_listbox.get(index)
+        self.state_listbox.delete(index)
+        self.condition_listbox.delete(index)
+        self.execution_target_listbox.delete(index)
+        self.state_listbox.insert(index+1, state_current)
+        self.condition_listbox.insert(index+1, condition_current)
+        self.execution_target_listbox.insert(index+1, execution_target_current)
 
-    def condition_list_scroll(self, *args):
+        self.state_listbox.selection_set(index+1)
+        self.condition_listbox.selection_set(index+1)
+        self.execution_target_listbox.selection_set(index+1)
+        self.state_listbox.see(index+1)
+
+        if index+1 == self.state_listbox.size()-1:
+            self.down_button.config(state="disabled")
+        self.up_button.config(state="normal")
+
+    def condition_list_scrollbar_callback(self, *args):
         self.state_listbox.yview(*args)
         self.condition_listbox.yview(*args)
         self.execution_target_listbox.yview(*args)
-        print args
 
-    def other_scroll(self, *args):
+    def state_listbox_scroll(self, *args):
+        self.condition_listbox.yview_moveto(args[0])
+        self.execution_target_listbox.yview_moveto(args[0])
         self.condition_list_scrollbar.set(*args)
-        # print args
+
+    def condition_listbox_scroll(self, *args):
+        self.state_listbox.yview_moveto(args[0])
+        self.execution_target_listbox.yview_moveto(args[0])
+
+    def execution_target_listbox_scroll(self, *args):
+        self.state_listbox.yview_moveto(args[0])
+        self.condition_listbox.yview_moveto(args[0])
+
+    
+    def any_listbox_selected(self):
+        self.up_button.config(state="normal")
+        self.down_button.config(state="normal")
+        if self.state_listbox.curselection()[0] == self.state_listbox.size()-1:
+            self.down_button.config(state="disabled")
+        if self.state_listbox.curselection()[0] == 0:
+            self.up_button.config(state="disabled")
+
+
+    def state_listbox_selected(self, event):
+        index = self.state_listbox.curselection()[0]
+        try:
+            self.condition_listbox.selection_clear(
+                self.condition_listbox.curselection()[0]
+            )
+        except IndexError:
+            pass
+        self.condition_listbox.selection_set(index)
+        try:
+            self.execution_target_listbox.selection_clear(
+                self.execution_target_listbox.curselection()[0]
+            )
+        except IndexError:
+            pass
+        self.execution_target_listbox.selection_set(index)
+        self.any_listbox_selected()
+
+    def condition_listbox_selected(self, event):
+        index = self.condition_listbox.curselection()[0]
+        try:
+            self.state_listbox.selection_clear(
+                self.state_listbox.curselection()[0]
+            )
+        except IndexError:
+            pass
+        self.state_listbox.selection_set(index)
+        try:
+            self.execution_target_listbox.selection_clear(
+                self.execution_target_listbox.curselection()[0]
+            )
+        except IndexError:
+            pass
+        self.execution_target_listbox.selection_set(index)
+        self.any_listbox_selected()
+
+    def execution_target_listbox_selected(self, event):
+        index = self.execution_target_listbox.curselection()[0]
+        try:
+            self.state_listbox.selection_clear(
+                self.state_listbox.curselection()[0]
+            )
+        except IndexError:
+            pass
+        self.state_listbox.selection_set(index)
+        try:
+            self.condition_listbox.selection_clear(
+                self.condition_listbox.curselection()[0]
+            )
+        except IndexError:
+            pass
+        self.condition_listbox.selection_set(index)
+        self.any_listbox_selected()
+
 
 
 

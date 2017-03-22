@@ -187,7 +187,7 @@ class TreeTest(Tk):
             pady=shared_pad_y
         )
 
-        close_frame = Frame(main_frame, bg="pink")
+        close_frame = Frame(main_frame)
         close_button = Button(close_frame, text="Close")
         close_button.grid(column=0, row=0, sticky=(S, E))
         close_frame.grid(
@@ -215,7 +215,7 @@ class TreeTest(Tk):
         index = self.state_listbox.curselection()[0]
         state_current = self.state_listbox.get(index)
         condition_current = self.condition_listbox.get(index)
-        execution_target_current = self.condition_listbox.get(index)
+        execution_target_current = self.execution_target_listbox.get(index)
         self.state_listbox.delete(index)
         self.condition_listbox.delete(index)
         self.execution_target_listbox.delete(index)
@@ -271,7 +271,7 @@ class TreeTest(Tk):
         self.state_listbox.yview_moveto(args[0])
         self.condition_listbox.yview_moveto(args[0])
 
-    
+
     def any_listbox_selected(self):
         self.up_button.config(state="normal")
         self.down_button.config(state="normal")

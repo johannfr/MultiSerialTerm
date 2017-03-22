@@ -178,6 +178,7 @@ class ConditionalsEditor(Tk):
         )
 
         self.active_checkbutton = StringVar()
+        self.active_checkbutton.set("Enabled")
         active_checkbutton = Checkbutton(
             option_frame,
             text="Enabled",
@@ -263,7 +264,6 @@ class ConditionalsEditor(Tk):
         self.execution_target_listbox.insert(index-1, execution_target_current)
 
         self.conditionals.insert(index-1, self.conditionals.pop(index))
-        print self.conditionals
 
         self.state_listbox.selection_set(index-1)
         self.condition_listbox.selection_set(index-1)

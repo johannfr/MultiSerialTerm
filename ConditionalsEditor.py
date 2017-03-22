@@ -3,38 +3,45 @@
 
 from Tkinter import Tk, Frame, Button, Label, StringVar, Entry, Scrollbar, \
     Text, Radiobutton, Checkbutton, PhotoImage, Listbox, END, N, S, E, W,  \
-    VERTICAL, HORIZONTAL, YES, NO, TOP, FLAT, SUNKEN
+    VERTICAL, HORIZONTAL, YES, NO, TOP, FLAT, SUNKEN, LEFT
+import os
 #from ttk import Treeview
 
-class TreeTest(Tk):
-    def __init__(self):
+class ConditionalsEditor(Tk):
+    def __init__(self, conditionals):
         Tk.__init__(self)
         self.title("Condition Editor")
+        self.conditionals = conditionals
 
         shared_pad_x = 3
         shared_pad_y = 3
 
         main_frame = Frame(self)
         main_frame.grid(column=0, row=0, sticky=(N, W, E, S))
+        image_path = "images"
+        image_files = [f for f in os.listdir(image_path)
+            if os.path.isfile(os.path.join(image_path, f)) and
+            f.endswith(".png")]
+        self.icons = {}
+        for image_file in image_files:
+            self.icons[os.path.splitext(os.path.basename(image_file))[0]] = PhotoImage(file=os.path.join(image_path, image_file))
 
         up_down_button_frame = Frame(main_frame)
 
-        self.up_icon = PhotoImage(file="images/gtk-go-up.png")
         self.up_button = Button(
             up_down_button_frame,
             state="disabled",
             text="Move up",
-            image=self.up_icon,
+            image=self.icons["gtk-go-up"],
             command=self.up_pressed
         )
         self.up_button.grid(column=0, row=0, sticky=(E))
 
-        self.down_icon = PhotoImage(file="images/gtk-go-down.png")
         self.down_button = Button(
             up_down_button_frame,
             state="disabled",
             text="Move down",
-            image=self.down_icon,
+            image=self.icons["gtk-go-down"],
             command=self.down_pressed
         )
         self.down_button.grid(column=0, row=1, sticky=(E))
@@ -105,34 +112,37 @@ class TreeTest(Tk):
         )
         condition_list.grid_rowconfigure(0, weight=1)
 
-
-        for i in range(5):
-            self.state_listbox.insert(END, "Foo %d"%i)
-            self.condition_listbox.insert(END, "Bar %d"%i)
-            self.execution_target_listbox.insert(END, "Baz %d"%i)
+        for conditional in self.conditionals:
+            self.state_listbox.insert(END, conditional[0])
+            self.condition_listbox.insert(END, conditional[1])
+            self.execution_target_listbox.insert(END, conditional[2])
+        #for i in range(5):
+        #    self.state_listbox.insert(END, "Foo %d"%i)
+        #    self.condition_listbox.insert(END, "Bar %d"%i)
+        #    self.execution_target_listbox.insert(END, "Baz %d"%i)
 
 
         if_label = Label(main_frame, text="If:", padx=10)
         if_label.grid(column=0, row=1, sticky=(N, E))
-        if_text_variable = StringVar()
-        if_entry = Entry(main_frame, textvariable=if_text_variable)
+        self.if_text_variable = StringVar()
+        if_entry = Entry(main_frame, textvariable=self.if_text_variable)
         if_entry.grid(
             column=1,
             row=1,
             sticky=(E, W),
             padx=shared_pad_x,
-            pady=shared_pad_y
+            pady=shared_pad_y,
         )
 
         then_label = Label(main_frame, text="Then:", padx=10)
         then_label.grid(column=0, row=2, sticky=(N, E))
-        then_entry = Text(main_frame)
-        then_entry.grid(
+        self.then_entry = Text(main_frame)
+        self.then_entry.grid(
             column=1,
             row=2,
             sticky=(N, S, E, W),
             padx=shared_pad_x,
-            rowspan=2
+            rowspan=2,
         )
 
         option_frame = Frame(main_frame)
@@ -144,19 +154,19 @@ class TreeTest(Tk):
             pady=(10, shared_pad_y)
         )
         self.execution_target = StringVar()
-        self.execution_target.set("debugger")
+        self.execution_target.set("Debugger")
         debugger_radiobutton = Radiobutton(
             option_frame,
             text="Debugger",
             variable=self.execution_target,
-            value="debugger"
+            value="Debugger"
         )
         debugger_radiobutton.grid(column=0, row=1, sticky=(N, W))
         python_radiobutton = Radiobutton(
             option_frame,
             text="Python",
             variable=self.execution_target,
-            value="python"
+            value="Python"
         )
         python_radiobutton.grid(column=0, row=2, sticky=(N, W))
         state_label = Label(option_frame, text="State")
@@ -167,17 +177,41 @@ class TreeTest(Tk):
             pady=(10, shared_pad_y)
         )
 
-        active_checkbutton = Checkbutton(option_frame, text="Enabled")
+        self.active_checkbutton = StringVar()
+        active_checkbutton = Checkbutton(
+            option_frame,
+            text="Enabled",
+            variable=self.active_checkbutton,
+            onvalue="Enabled",
+            offvalue="Disabled"
+        )
         active_checkbutton.grid(column=0, row=4, sticky=(N, W))
         option_frame.grid(column=0, row=3, sticky=(N, S, E, W), pady=5)
 
         button_frame = Frame(main_frame)
-        add_button = Button(button_frame, text="Add")
-        add_button.grid(column=0, row=0, sticky=(E))
-        update_button = Button(button_frame, text="Update")
-        update_button.grid(column=1, row=0, sticky=(E))
-        delete_button = Button(button_frame, text="Delete")
-        delete_button.grid(column=2, row=0, sticky=(E))
+        self.add_button = Button(
+            button_frame,
+            state="disabled",
+            text="Add",
+            image=self.icons["gtk-add"],
+            compound=LEFT)
+        self.add_button.grid(column=0, row=0, sticky=(E))
+        self.update_button = Button(
+            button_frame,
+            state="disabled",
+            text="Update",
+            image=self.icons["gtk-edit"],
+            compound=LEFT
+        )
+        self.update_button.grid(column=1, row=0, sticky=(E))
+        self.delete_button = Button(
+            button_frame,
+            state="disabled",
+            text="Delete",
+            image=self.icons["gtk-remove"],
+            compound=LEFT
+        )
+        self.delete_button.grid(column=2, row=0, sticky=(E))
         button_frame.grid(
             column=0,
             row=4,
@@ -188,7 +222,12 @@ class TreeTest(Tk):
         )
 
         close_frame = Frame(main_frame)
-        close_button = Button(close_frame, text="Close")
+        close_button = Button(
+            close_frame,
+            text="Close",
+            image=self.icons["gtk-close"],
+            compound=LEFT
+        )
         close_button.grid(column=0, row=0, sticky=(S, E))
         close_frame.grid(
             column=0,
@@ -223,6 +262,9 @@ class TreeTest(Tk):
         self.condition_listbox.insert(index-1, condition_current)
         self.execution_target_listbox.insert(index-1, execution_target_current)
 
+        self.conditionals.insert(index-1, self.conditionals.pop(index))
+        print self.conditionals
+
         self.state_listbox.selection_set(index-1)
         self.condition_listbox.selection_set(index-1)
         self.execution_target_listbox.selection_set(index-1)
@@ -243,6 +285,8 @@ class TreeTest(Tk):
         self.state_listbox.insert(index+1, state_current)
         self.condition_listbox.insert(index+1, condition_current)
         self.execution_target_listbox.insert(index+1, execution_target_current)
+
+        self.conditionals.insert(index+1, self.conditionals.pop(index))
 
         self.state_listbox.selection_set(index+1)
         self.condition_listbox.selection_set(index+1)
@@ -279,6 +323,25 @@ class TreeTest(Tk):
             self.down_button.config(state="disabled")
         if self.state_listbox.curselection()[0] == 0:
             self.up_button.config(state="disabled")
+        self.delete_button.config(state="normal")
+        self.then_entry.delete("1.0", END)
+        self.then_entry.insert(
+            END,
+            self.conditionals[self.state_listbox.curselection()[0]][3]
+        )
+        self.if_text_variable.set(
+            self.conditionals[self.state_listbox.curselection()[0]][1]
+        )
+
+        self.execution_target.set(
+            self.conditionals[self.state_listbox.curselection()[0]][2]
+        )
+
+        self.active_checkbutton.set(
+            self.conditionals[self.state_listbox.curselection()[0]][0]
+        )
+
+        
 
 
     def state_listbox_selected(self, event):
@@ -339,6 +402,10 @@ class TreeTest(Tk):
 
 
 if __name__ == "__main__":
-    tt = TreeTest()
+    conditionals = [
+        ["Enabled", "line.startswith(\"foo\")", "Python", "f = ....."],
+        ["Disabled", "line.startswith(\"bar\")", "Debugger", "halt\nreset"],
+    ]
+    tt = ConditionalsEditor(conditionals)
     tt.resizable(True, True)
     tt.mainloop()

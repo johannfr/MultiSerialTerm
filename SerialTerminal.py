@@ -7,18 +7,24 @@ COMPANY = "FossAnalytical"
 AUTHOR = "JOFR"
 
 from Tkinter import Tk, Frame, Button, Label, StringVar, IntVar, Entry, Scrollbar, Listbox, Text, Menu, END, N, S, E, W, VERTICAL, HORIZONTAL, NONE
+from Tkinter import Toplevel
 from ttk import Combobox
 import tkFileDialog
 import tkMessageBox
+import Queue
 
 import serial.tools.list_ports
 
 from SerialThread import SerialThread
 
+from ConditionalsEditor import ConditionalsEditor
+
 class SerialTerm(Tk):
-    def __init__(self):
+    def __init__(self, serial_queue, serial_thread):
         Tk.__init__(self)
         self.title("Foss SerialTerminal for Multi")
+        self.serial_queue = serial_queue
+        self.serial_thread  = serial_thread
 
         menu_bar = Menu(self)
 
@@ -27,15 +33,15 @@ class SerialTerm(Tk):
         file_menu.add_command(label="Exit", command=self.quit)
         menu_bar.add_cascade(label="File", menu=file_menu)
 
-        parser_menu = Menu(menu_bar, tearoff=0)
+        self.parser_menu = Menu(menu_bar, tearoff=0)
         self.serial_parser_enabled = IntVar()
         self.serial_parser_enabled.set(1)
-        parser_menu.add_checkbutton(
+        self.parser_menu.add_checkbutton(
             label="Serial parser enabled",
             variable=self.serial_parser_enabled
         )
-        parser_menu.add_command(label="Edit parser rules")
-        menu_bar.add_cascade(label="Parser", menu=parser_menu)
+        self.parser_menu.add_command(label="Edit parser rules", command=self.open_conditionals_editor)
+        menu_bar.add_cascade(label="Parser", menu=self.parser_menu)
 
 
         self.config(menu=menu_bar)
@@ -59,6 +65,7 @@ class SerialTerm(Tk):
             xscrollcommand=output_text_horizontal_scrollbar.set,
             yscrollcommand=output_text_vertical_scrollbar.set
         )
+        self.output_text.configure(bg="white", state="disabled")
         self.output_text.grid(column=0, row=0, sticky=(N, S, E, W))
         output_text_vertical_scrollbar.grid(column=1, row=0, sticky=(N, S))
         output_text_vertical_scrollbar.config(command=self.output_text.yview)
@@ -93,10 +100,11 @@ class SerialTerm(Tk):
             width=len(max(serial_port_names, key=len))
         )
         self.port_name_selection.current(newindex=0)
+        self.port_name_selection_index = 0
         self.port_name_selection.grid(column=2, row=0)
 
 
-        baud_rates = [
+        baudrates = [
             "300 baud",
             "1200 baud",
             "2400 baud",
@@ -111,26 +119,87 @@ class SerialTerm(Tk):
             "250000 baud"
         ]
 
-        self.baud_rate_selection = Combobox(
+        self.baudrate_selection = Combobox(
             input_frame,
-            values = baud_rates,
+            values = baudrates,
             state="readonly",
-            width=len(max(baud_rates, key=len))
+            width=len(max(baudrates, key=len))
         )
-        self.baud_rate_selection.current(newindex=9)
-        self.baud_rate_selection.grid(column=3, row=0)
+        self.baudrate_selection.current(newindex=9)
+        self.baudrate_selection.grid(column=3, row=0)
 
         input_frame.grid(column=0, row=1, sticky=(E, W))
         input_frame.grid_columnconfigure(0, weight=1)
 
-    def serial_callback(self, serial_line):
-        print serial_line
+        self.port_name_selection.bind("<<ComboboxSelected>>", self.port_name_selected)
+        self.baudrate_selection.bind("<<ComboboxSelected>>", self.baudrate_selected)
+
+        self.after(100, self.serial_tick)
+
+        # TODO Load from pickle file.
+        self.conditionals = [
+            ["Enabled", "line.startswith(\"Hello\")", "Python", "print 'Fooobaaaaar. Jibb.'"],
+            ["Enabled", "line.startswith(\"Foo\")", "Debugger", "halt\nreset"],
+        ]
+        self.counter = 0
+
+
+    def open_conditionals_editor(self):
+        self.conditionals_editor = Toplevel(master=self)
+        self.parser_menu.entryconfig("Edit parser rules", state="disabled")
+        ConditionalsEditor(self.conditionals_editor, self.conditionals, self.closing_conditionals_editor)
+
+    def closing_conditionals_editor(self):
+        self.parser_menu.entryconfig("Edit parser rules", state="normal")
+
+
+    def update_output_text(self, line):
+        self.output_text.configure(state="normal")
+        self.output_text.insert(END, line)
+        self.output_text.configure(state="disabled")
+        self.output_text.see(END)
+
+    def evaluate_conditionals(self, line):
+        if self.serial_parser_enabled.get() == 1:
+            for condition in self.conditionals:
+                if condition[0] == "Enabled":
+                    if eval(condition[1]):
+                        if condition[2] == "Python":
+                            exec(condition[3], locals())
+                        elif condition[2] == "Debugger":
+                            print "Send to debugger: %s"%condition[3]
+
+
+
+    def serial_tick(self):
+        while True:
+            try:
+                line = self.serial_queue.get_nowait()
+                self.update_output_text(line)
+                self.evaluate_conditionals(line)
+            except Queue.Empty:
+                break
+        self.after(100, self.serial_tick)
+
+    def port_name_selected(self, event):
+        port_name = event.widget.selection_get()
+        if port_name == "Port":
+            event.widget.current(newindex=self.port_name_selection_index)
+            return
+        self.port_name_selection_index = event.widget.current()
+        self.serial_thread.set_port(port_name)
+
+    def baudrate_selected(self, event):
+        self.serial_thread.set_baudrate(event.widget.selection_get())
 
 
 
 if __name__ == "__main__":
-    serial_term = SerialTerm()
+    serial_queue = Queue.Queue()
+    serial_thread = SerialThread(serial_queue)
+    serial_thread.start()
+    serial_term = SerialTerm(serial_queue, serial_thread)
     serial_term.resizable(True, True)
-    #serial_thread = SerialThread(serial_term.serial_callback)
-    #serial_thread.start()
+
     serial_term.mainloop()
+    serial_thread.close()

@@ -7,16 +7,18 @@ from Tkinter import Tk, Frame, Button, Label, StringVar, Entry, Scrollbar, \
 import os
 #from ttk import Treeview
 
-class ConditionalsEditor(Tk):
-    def __init__(self, conditionals):
-        Tk.__init__(self)
-        self.title("Condition Editor")
+class ConditionalsEditor:
+    def __init__(self, my_window, conditionals, close_callback):
+        #Tk.__init__(self)
+        self.my_window = my_window
+        self.my_window.title("Condition Editor")
+        self.close_callback = close_callback
         self.conditionals = conditionals
 
         shared_pad_x = 3
         shared_pad_y = 3
 
-        main_frame = Frame(self)
+        main_frame = Frame(self.my_window)
         main_frame.grid(column=0, row=0, sticky=(N, W, E, S))
         image_path = "images"
         image_files = [f for f in os.listdir(image_path)
@@ -227,7 +229,8 @@ class ConditionalsEditor(Tk):
             close_frame,
             text="Close",
             image=self.icons["gtk-close"],
-            compound=LEFT
+            compound=LEFT,
+            command=self.on_closing
         )
         close_button.grid(column=0, row=0, sticky=(S, E))
         close_frame.grid(
@@ -240,8 +243,8 @@ class ConditionalsEditor(Tk):
         )
 
 
-        self.grid_columnconfigure(0, weight=1)
-        self.grid_rowconfigure(0, weight=1)
+        self.my_window.grid_columnconfigure(0, weight=1)
+        self.my_window.grid_rowconfigure(0, weight=1)
         main_frame.grid_columnconfigure(1, weight=1)
         main_frame.grid_rowconfigure(0, weight=1)
         main_frame.grid_rowconfigure(2, weight=0)
@@ -250,6 +253,14 @@ class ConditionalsEditor(Tk):
         main_frame.grid_rowconfigure(5, weight=1)
         condition_list.grid_columnconfigure(1, weight=1)
         button_frame.grid_rowconfigure(0, weight=1)
+
+        self.my_window.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        if self.close_callback is not None:
+            self.close_callback()
+        self.my_window.destroy()
+
 
     def up_pressed(self):
         index = self.state_listbox.curselection()[0]
@@ -341,7 +352,7 @@ class ConditionalsEditor(Tk):
             self.conditionals[self.state_listbox.curselection()[0]][0]
         )
 
-        
+
 
 
     def state_listbox_selected(self, event):
